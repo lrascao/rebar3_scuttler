@@ -1,0 +1,15 @@
+{application,rebar3_scuttler,
+             [{description,"A rebar3 plugin to generate config files using cuttlefish"},
+              {vsn,"0.1.0"},
+              {registered,[]},
+              {applications,[
+                kernel,
+                stdlib,
+                cuttlefish
+              ]},
+              {env,[]},
+              {modules,[]},
+              {maintainers,[]},
+              {licenses,["MIT"]},
+              {links,[{"Github",
+                       "https://github.com/lrascao/rebar3_scuttler"}]}]}.
