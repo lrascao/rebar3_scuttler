@@ -1,6 +1,6 @@
 {application,rebar3_scuttler,
              [{description,"A rebar3 plugin to generate config files using cuttlefish"},
-              {vsn,"0.1.0"},
+              {vsn,semver},
               {registered,[]},
               {applications,[
                 kernel,
