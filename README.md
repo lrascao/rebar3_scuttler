@@ -1,7 +1,7 @@
 rebar3 scuttlefish plugin
 =====
 
-[![Build Status]()](https://travis-ci.org/lrascao/rebar3_appup_plugin)
+![Build Status](https://github.com/lrascao/rebar3_scuttler/workflows/CI/badge.svg)
 [![hex.pm version]()](https://hex.pm/packages/rebar3_appup_plugin)
 
 A rebar3 plugin for [cuttlefish](https://github.com/Kyorai/cuttlefish) schema handling with a slightly different approach than [rebar3_cuttlefish](https://github.com/vernemq/rebar3_cuttlefish).
