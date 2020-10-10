@@ -1,7 +1,7 @@
 rebar3 scuttlefish plugin
 =====
 
-[![Build Status]()](https://travis-ci.org/lrascao/rebar3_appup_plugin)
+![Build Status](https://github.com/lrascao/rebar3_scuttler/workflows/CI/badge.svg)
 [![hex.pm version]()](https://hex.pm/packages/rebar3_appup_plugin)
 
 A rebar3 plugin for [cuttlefish](https://github.com/Kyorai/cuttlefish) schema handling with a slightly different approach than [rebar3_cuttlefish](https://github.com/vernemq/rebar3_cuttlefish).
@@ -25,12 +25,12 @@ Integration
     
 In order to integrate and make use of this plugin the following steps are needed:
 
-    1. Include the `rebar3_scuttler` plugin in your project
-    2. Write a [cuttlefish schema](https://github.com/basho/cuttlefish/wiki/Cuttlefish-for-Erlang-Developers) that exposes the application parameters
-       you'll allow your users to change.
-    3. Configure the `rebar3_scuttler` plugin
-    4. Add the cuttlefish pre start hook to your release's hooks
-    5. Include the generated `.config` files from your `sys.config`
+* Include the `rebar3_scuttler` plugin in your project
+* Write a [cuttlefish schema](https://github.com/basho/cuttlefish/wiki/Cuttlefish-for-Erlang-Developers) that exposes the application parameters
+   you'll allow your users to change.
+* Configure the `rebar3_scuttler` plugin
+* Add the cuttlefish pre start hook to your release's hooks
+* Include the generated `.config` files from your `sys.config`
 
 ### Including the plugin
 
@@ -68,13 +68,18 @@ Files containing cuttlefish schemas should have the `.schema` extension, you sho
 
 `rebar3_scuttler` has the following options:
 
-    * `schema_dir`, can either be the atom `auto_discover` or a string containing a dir where the plugin will recursively look for
-      `.schema` files. Use `auto_discover` when your dependencies also offer cuttlefish schemas that you want to make use of.
-    * `pre_start_hook`, this is the name of file that will contain this plugin's pre start hook to be invoked just
-      prior to starting a release. This script will take care of processing `.schema` and `.conf` files in order to output
-      `.config` files that you will be able to include from your own.
-    * `output_file`, the `.config` file that gets generated as the final result
-    * `conf_file`, the human non-Erlanger `.conf` that your application users will be able to tweak.
+* `schema_dir`, can either be the atom `auto_discover` or a string containing a dir
+   where the plugin will recursively look for `.schema` files.
+   Use `auto_discover` when your dependencies also offer cuttlefish schemas
+   that you want to make use of.
+* `pre_start_hook`, this is the name of file that will contain this plugin's pre start hook to be invoked just
+  prior to starting a release.
+  This script will take care of processing `.schema` and `.conf` files in order to output
+  `.config` files that you will be able to include from your own.
+* `output_file`, the `.config` file that gets generated as the final result
+* `conf_file`, the human non-Erlanger `.conf` that your application users will be able to tweak.
+
+The following entries should go in `rebar.config`.
 
 ```
 % scuttler plugin opts
