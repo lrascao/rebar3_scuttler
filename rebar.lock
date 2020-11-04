@@ -2,7 +2,7 @@
 [{<<"bbmustache">>,{pkg,<<"bbmustache">>,<<"1.5.0">>},0},
  {<<"cuttlefish">>,
   {git,"https://github.com/lrascao/cuttlefish.git",
-       {ref,"c0d602f4e644639320ea45adedbde2baf884544f"}},
+       {ref,"13ebade688679ea68197ee5b479fcf630a5b78ef"}},
   0},
  {<<"getopt">>,{pkg,<<"getopt">>,<<"1.0.1">>},1},
  {<<"goldrush">>,{pkg,<<"goldrush">>,<<"0.1.9">>},2},
