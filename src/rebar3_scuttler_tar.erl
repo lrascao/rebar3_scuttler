@@ -40,7 +40,6 @@ format_error(Error) ->
 -spec do_tar(rebar_state:t()) -> rebar_state:t().
 do_tar(State0) ->
     Vsn = rebar3_scuttler_utils:rebar_version(),
-    rebar_api:debug("vsn: ~p", [Vsn]),
     case Vsn of
         #{minor := Minor} when Minor >= 14 ->
             % from 3.14 onwards, a relx refactor changed the interface

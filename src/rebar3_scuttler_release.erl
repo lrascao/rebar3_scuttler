@@ -135,7 +135,7 @@ do(State0) ->
 
     % generate the release, this will cause all schema files to be templated and copied
     % over to the release dir
-    State = do_release(State1),
+    State2 = do_release(State1),
 
     rebar_api:debug("all schemas: ~p", [AllSchemas]),
     % % now that the schema files have been templated, we look them up
@@ -148,29 +148,46 @@ do(State0) ->
             % there is no .conf file present, we'll just generate one out of
             % the schema defaults
             case cuttlefish_schema:files(ReleaseSchemas) of
-                {errorlist, _Es} ->
+                {errorlist, Errors} ->
+                    rebar_api:error("bad cuttlefish schemas: ~p (~p)",
+                                    [ReleaseSchemas, Errors]),
                     %% These errors were already printed
                     {error, "bad cuttlefish schemas"};
                 {_Translations, Mappings, _Validators} ->
                     make_default_file(ConfFile, TargetDir, Mappings),
-                    State
+                    % now a bit of trickery that should be justified. Earlier we asked relx
+                    % to create the release and gave it the schema overlays to copy over to the
+                    % final release. Only after that did we ask cuttlefish to generate a default conf file
+                    % based on these schema files, now we need to sneak a copy overlay of this generated
+                    % conf file into relx's state in order for it to end up in a tarball thats a result of
+                    % `rebar3 tar`.
+                    {ok, rebar_state:set(State2, relx,
+                                         lists:keydelete(overlay, 1, Relx) ++
+                                                         [{overlay, [
+                                                            {copy, ConfFile, ConfFile} | Overlays]}])}
             end;
         true ->
-            State
+            rebar_api:debug("no need to generate a default .conf file, one already exists at ~p",
+                            [filename:join([TargetDir, ConfFile])]),
+            {ok, rebar_state:set(State2, relx,
+                                 lists:keydelete(overlay, 1, Relx) ++
+                                                 [{overlay, [
+                                                    {copy, ConfFile, ConfFile} | Overlays]}])}
     end.
 
 -spec do_release(rebar_state:t()) -> rebar_state:t().
 do_release(State0) ->
     Vsn = rebar3_scuttler_utils:rebar_version(),
-    rebar_api:debug("vsn: ~p", [Vsn]),
-    case Vsn of
-        #{minor := Minor} when Minor >= 14 ->
-            % from 3.14 onwards, a relx refactor changed the interface
-            % of rebar_relx
-            rebar_relx:do(release, State0);
-        _ ->
-            rebar_relx:do(rlx_prv_release, "release", ?PROVIDER, State0)
-    end.
+    {ok, State} =
+        case Vsn of
+            #{minor := Minor} when Minor >= 14 ->
+                % from 3.14 onwards, a relx refactor changed the interface
+                % of rebar_relx
+                rebar_relx:do(release, State0);
+            _ ->
+                rebar_relx:do(rlx_prv_release, "release", ?PROVIDER, State0)
+        end,
+    State.
 
 find_release_schemas(Dir, Schemas) ->
     SchemaFilenames = lists:map(fun filename:basename/1, Schemas),
@@ -180,7 +197,6 @@ find_release_schemas(Dir, Schemas) ->
     SchemasFound = rebar_utils:find_files(Dir, SchemaExtRe, true),
     % now filter out all the files that were not provided in the configuration
     lists:filter(fun(SchemaFound) ->
-                    % rebar_api:debug("schema found: ~p", [SchemaFound]),
                     % ignore all .schema located beneath the `lib` dir since these
                     % contain .schema files that were templated by relx and might contain
                     % unprocessed overlay vars
@@ -201,6 +217,8 @@ format_error(Error) ->
     io_lib:format("~p", [Error]).
 
 make_default_file(File, TargetDir, Mappings) ->
+    rebar_api:debug("generating default file ~p in ~p",
+                    [File, TargetDir]),
     Filename = filename:join([TargetDir, File]),
     filelib:ensure_dir(Filename),
     cuttlefish_conf:generate_file(Mappings, Filename),
