@@ -161,7 +161,7 @@ do(State0) ->
 
 -spec do_release(rebar_state:t()) -> rebar_state:t().
 do_release(State0) ->
-    Vsn = rebar_version(),
+    Vsn = rebar3_scuttler_utils:rebar_version(),
     rebar_api:debug("vsn: ~p", [Vsn]),
     case Vsn of
         #{minor := Minor} when Minor >= 14 ->
@@ -263,10 +263,4 @@ template(Source, Context) ->
                             [Error]),
             {error, Error}
     end.
-
--spec rebar_version() -> verl:version_t().
-rebar_version() ->
-    {ok, Vsn0} = application:get_key(rebar, vsn),
-    {ok, Vsn} = verl:parse(list_to_binary(Vsn0)),
-    Vsn.
 
