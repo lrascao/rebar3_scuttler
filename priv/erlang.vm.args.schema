@@ -81,7 +81,7 @@
 %% see error_logger:warning_map/0 in Kernel.
 {mapping, "erlang.W", "vm_args.+W", [
   {datatype, {enum, [w, i, e]}},
-  {commented, "w"},
+  {default, "w"},
   hidden
 ]}.
 
