@@ -2,15 +2,17 @@
 [{<<"bbmustache">>,{pkg,<<"bbmustache">>,<<"1.5.0">>},0},
  {<<"cuttlefish">>,
   {git,"https://github.com/lrascao/cuttlefish.git",
-       {ref,"d4df9d2bf5f6ab4fe5fdcf2882bc4c1b167fe7c6"}},
+       {ref,"c0d602f4e644639320ea45adedbde2baf884544f"}},
   0},
  {<<"getopt">>,{pkg,<<"getopt">>,<<"1.0.1">>},1},
  {<<"goldrush">>,{pkg,<<"goldrush">>,<<"0.1.9">>},2},
- {<<"lager">>,{pkg,<<"lager">>,<<"3.8.0">>},1}]}.
+ {<<"lager">>,{pkg,<<"lager">>,<<"3.8.1">>},1},
+ {<<"verl">>,{pkg,<<"verl">>,<<"1.0.2">>},0}]}.
 [
 {pkg_hash,[
  {<<"bbmustache">>, <<"8CFDE0602E90A4057E161BF5288ADE854B4E511E2E8924966A8438730E958381">>},
  {<<"getopt">>, <<"C73A9FA687B217F2FF79F68A3B637711BB1936E712B521D8CE466B29CBF7808A">>},
  {<<"goldrush">>, <<"F06E5D5F1277DA5C413E84D5A2924174182FB108DABB39D5EC548B27424CD106">>},
- {<<"lager">>, <<"3402B9A7E473680CA179FC2F1D827CAB88DD37DD1E6113090C6F45EF05228A1C">>}]}
+ {<<"lager">>, <<"652EDFFBBEFFDE78F12220E1C64F6F6BFB173A8738CE73AF6ED3B1723A71C5BD">>},
+ {<<"verl">>, <<"02ECD8E074E247C762383A6FE85533D6D07007529B86E47AAA6A80A9C1BB6629">>}]}
 ].

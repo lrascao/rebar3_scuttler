@@ -11,6 +11,7 @@
 -define(DEPS, [{?NAMESPACE, compile}]).
 
 -define(PRE_START_HOOK_TEMPLATE, "pre_start_cuttlefish.tpl").
+-define(ERLANG_VM_ARGS_SCHEMA, "erlang.vm.args.schema").
 
 %% ===================================================================
 %% Public API
@@ -24,7 +25,7 @@ init(State) ->
             {bare, true},                 % The task can be run by the user, always true
             {deps, ?DEPS},                % The list of dependencies
             {example, "rebar3 scuttler release"}, % How to use the plugin
-            {opts, relx:opt_spec_list()},                   % list of options understood by the plugin
+            {opts, []},                   % list of options understood by the plugin
             {short_desc, "Rebar3 scuttler release plugin"},
             {desc, ""}
     ]),
@@ -38,13 +39,13 @@ do(State0) ->
     Relx = rebar_state:get(State0, relx, []),
     % find the release's name
     {release, {Name, _Vsn}, _} = lists:keyfind(release, 1, Relx),
-    _ConfFilename =
-        case lists:keyfind(conf_filename, 1, ScuttlerConf) of
-           {conf_filename, ConfFilename0} ->
-               ConfFilename0;
-           _ ->
-               io_lib:format("~s.conf", [Name])
-        end,
+
+    % find deps and apps for this project
+    ReleaseDir = rebar_release_dir(State0),
+    TargetDir = filename:join([ReleaseDir, Name]),
+    Deps = rebar_state:all_deps(State0),
+    Apps = rebar_state:project_apps(State0),
+
     % find the cuttlefish escript executable
     CuttlefishBin =
         case filelib:is_regular(filename:join([rebar_dir:base_dir(State0), "bin", "cuttlefish"])) of
@@ -62,99 +63,85 @@ do(State0) ->
                 end
          end,
 
-    ReleaseDir = rebar_release_dir(State0),
-    TargetDir = filename:join([ReleaseDir, Name]),
-    Deps = rebar_state:all_deps(State0),
-    Apps = rebar_state:project_apps(State0),
-
-    SchemaDir =
-        case lists:keyfind(schema_dir, 1, ScuttlerConf) of
-           {schema_dir, SchemaDir0} ->
-               SchemaDir0;
-           false ->
-               auto_discover
-       end,
-    AllSchemas = schemas(SchemaDir, Deps++Apps),
-
-    % get the location of the plugin's extended start script hook,
-    % should be in priv/cuttlefish_start_hook
-    PreStartHook0 = filename:join([code:priv_dir(rebar3_scuttler), ?PRE_START_HOOK_TEMPLATE]),
-
-    % the conf filename will use the name of this release and the .conf suffix
-    ConfFile =
-        case lists:keyfind(conf_file, 1, ScuttlerConf) of
-           {conf_file, ConfFile0} ->
-               ConfFile0;
-           false ->
-                atom_to_list(Name) ++ ".conf"
-       end,
-
-    % add template overlay entries that will copy all the cuttlefish schemas
-    % and the binary to the release
-    Overlays1 =
-        case lists:keyfind(overlay, 1, Relx) of
-            {overlay, Overlays0} ->
-                overlays(Name, CuttlefishBin, AllSchemas) ++ Overlays0;
-            _ ->
-                overlays(Name, CuttlefishBin, AllSchemas)
-        end,
-
     % find out the ebin dir for the plugin, we want to template our pre start
     % script and need somewhere to write it to
     PluginDeps = rebar_state:all_plugin_deps(State0),
     {ok, AppInfo} = rebar_app_utils:find(<<"rebar3_scuttler">>, PluginDeps),
     PluginEbinDir = rebar_app_info:ebin_dir(AppInfo),
 
-    ConfigOutputFile =
-        case lists:keyfind(output_file, 1, ScuttlerConf) of
-           {output_file, ConfigOutputFile0} ->
-                ConfigOutputFile0;
-           false ->
-                % no preference from the user, default
-               "releases/{{release_version}}/cuttlefish.config"
-       end,
-    ConfigOutputFilename = filename:basename(ConfigOutputFile),
-    ConfigOutputDir = filename:dirname(ConfigOutputFile),
+    % get the location of the plugin's extended start script hook,
+    % should be in priv/pre_start_cuttlefish.tpl
+    PreStartHookTemplate = filename:join([code:priv_dir(rebar3_scuttler), ?PRE_START_HOOK_TEMPLATE]),
 
-    % lastly inject the template directive that will copy the plugin
-    % pre start hook that will invoke cuttlefish bin and generate the
-    % .config files of each schema
-    % before that we need to replace all mustache variables in the
-    % pre start script template
-    % we'll template priv/pre_start_cuttlefish to the plugin's output dir
-    PreStartHook = filename:join([PluginEbinDir, ?PRE_START_HOOK_TEMPLATE]),
-    template(PreStartHook0, PreStartHook,
-             [{"schema_dir", "share/schema"},
-              {"output_dir", ConfigOutputDir},
-              {"output_filename", ConfigOutputFilename},
-              {"conf_file", ConfFile}]),
-    TargetPreStartHook =
-        case lists:keyfind(pre_start_hook, 1, ScuttlerConf) of
-                   {pre_start_hook, TargetPreStartHook0} ->
-                       TargetPreStartHook0;
-                   false ->
-                        % no preference from the user, default
-                       "bin/hooks/pre_start_cuttlefish"
-               end,
-    Overlays = [{template, PreStartHook, TargetPreStartHook} | Overlays1],
+    % the conf filename will default the name of this release and the .conf suffix unless
+    % requested by the developer
+    ConfFile = proplists:get_value(conf_file, ScuttlerConf,
+                                   atom_to_list(Name) ++ ".conf"),
+
+    % get the list of configured schema transformation definitions
+    SchemaDefs = proplists:get_value(schemas, ScuttlerConf, []),
+    % get the name of the to be generated pre start hook
+    ReleasePreStartHook = proplists:get_value(pre_start_hook, ScuttlerConf, 
+                                             "bin/hooks/pre_start_cuttlefish"),
+
+    % get the projects overlays and apply the overlay that will copy over the cuttlefish bin
+    % and create the share/schema directory inside the release
+    Overlays0 = apply_bin_overlay(Name, CuttlefishBin, proplists:get_value(overlay, Relx, [])),
+
+    % go through each of the requested schema transformation definition
+    % and generate a file for each of them
+    {AllSchemas, Overlays1, PreStartHookBin} =
+        lists:foldl(fun(SchemaDef, {SchemasAcc0, OverlaysAcc0, PreStartHookBinAcc0}) ->
+                        #{schemas := Schemas,
+                          release_schema_dir := ReleaseSchemaDir,
+                          output_file := OutputFile} = schemas(SchemaDef, Deps++Apps),
+
+                        % add template overlay entries that will copy all the cuttlefish schemas
+                        % to the release
+                        OverlaysAcc = apply_schema_overlays(Schemas, ReleaseSchemaDir, OverlaysAcc0),
+
+                        OutputFilename = filename:basename(OutputFile),
+                        OutputDir = filename:dirname(OutputFile),
+
+                        % lastly inject the template directive that will copy the plugin
+                        % pre start hook that will invoke cuttlefish bin and generate the
+                        % .config files of each schema
+                        % before that we need to replace all mustache variables in the
+                        % pre start script template
+                        PreStartHookBin = template(PreStartHookTemplate, 
+                                                   [{"schema_dir", ReleaseSchemaDir},
+                                                    {"output_dir", OutputDir},
+                                                    {"output_filename", OutputFilename},
+                                                    {"conf_file", ConfFile}]),
+
+                        {Schemas ++ SchemasAcc0, OverlaysAcc, <<PreStartHookBinAcc0/binary, PreStartHookBin/binary>>} 
+                    end,
+                    {[], Overlays0, <<"">>},
+                    SchemaDefs),
+
+    % write the templated result file to the plugin's output dir
+    PreStartHookFile = filename:join([PluginEbinDir, ?PRE_START_HOOK_TEMPLATE]),
+    ok = file:write_file(PreStartHookFile, PreStartHookBin),
+    Overlays = [{template, PreStartHookFile, ReleasePreStartHook} | Overlays1],
 
     % override the `overlay` relx project section with additional entries
     % that will allow us to inject:
     %   - the cuttefish bin tool
     %   - the templated cuttefish schema files
     %   - the pre-start extended start script hook
-    State = rebar_state:set(State0, relx,
-                            lists:keydelete(overlay, 1, Relx) ++
-                                [{overlay, Overlays}]),
+    State1 = rebar_state:set(State0, relx,
+                             lists:keydelete(overlay, 1, Relx) ++
+                                             [{overlay, Overlays}]),
 
     % generate the release, this will cause all schema files to be templated and copied
     % over to the release dir
-    Res = rebar_relx:do(rlx_prv_release, "release", ?PROVIDER, State),
+    State = do_release(State1),
 
-    % now that the schema files have been templated, we look them up
-    % in order to generate a skeleton .conf file with all the defaults
-    SchemaGlob = filename:join([TargetDir, "share", "schema", "*.schema"]),
-    ReleaseSchemas = filelib:wildcard(SchemaGlob),
+    rebar_api:debug("all schemas: ~p", [AllSchemas]),
+    % % now that the schema files have been templated, we look them up
+    % % in order to generate a skeleton .conf file with all the defaults
+    ReleaseSchemas = find_release_schemas(TargetDir, AllSchemas),
+    rebar_api:debug("release schemas: ~p", [ReleaseSchemas]),
 
     case filelib:is_regular(filename:join([TargetDir, ConfFile])) of
         false ->
@@ -166,11 +153,45 @@ do(State0) ->
                     {error, "bad cuttlefish schemas"};
                 {_Translations, Mappings, _Validators} ->
                     make_default_file(ConfFile, TargetDir, Mappings),
-                    Res
+                    State
             end;
         true ->
-            Res
+            State
     end.
+
+-spec do_release(rebar_state:t()) -> rebar_state:t().
+do_release(State0) ->
+    Vsn = rebar_version(),
+    rebar_api:debug("vsn: ~p", [Vsn]),
+    case Vsn of
+        #{minor := Minor} when Minor >= 14 ->
+            % from 3.14 onwards, a relx refactor changed the interface
+            % of rebar_relx
+            rebar_relx:do(release, State0);
+        _ ->
+            rebar_relx:do(rlx_prv_release, "release", ?PROVIDER, State0)
+    end.
+
+find_release_schemas(Dir, Schemas) ->
+    SchemaFilenames = lists:map(fun filename:basename/1, Schemas),
+    %% Convert simple extension to proper regex
+    SchemaExtRe = "^[^._].*\\" ++ ".schema" ++ [$$],
+    % recursively look for all .schema files in the supplied dir
+    SchemasFound = rebar_utils:find_files(Dir, SchemaExtRe, true),
+    % now filter out all the files that were not provided in the configuration
+    lists:filter(fun(SchemaFound) ->
+                    % rebar_api:debug("schema found: ~p", [SchemaFound]),
+                    % ignore all .schema located beneath the `lib` dir since these
+                    % contain .schema files that were templated by relx and might contain
+                    % unprocessed overlay vars
+                    case lists:prefix(filename:join([Dir, "lib"]), SchemaFound) of
+                        true ->
+                            false;
+                        _ ->
+                            lists:member(filename:basename(SchemaFound), SchemaFilenames)
+                    end
+                 end,
+                 SchemasFound).
 
 -spec format_error(any()) ->  iolist().
 format_error({no_cuttlefish_escript, ProfileDir}) ->
@@ -185,22 +206,39 @@ make_default_file(File, TargetDir, Mappings) ->
     cuttlefish_conf:generate_file(Mappings, Filename),
     Filename.
 
-schemas(auto_discover, Apps) ->
-    lists:flatmap(fun(App) ->
-                      AppDir = rebar_app_info:dir(App),
-                      filelib:wildcard(filename:join(["{priv,schema,schemas}", "*.schema"]), AppDir) ++
-                      filelib:wildcard(filename:join(["priv", "{schema,schemas}", "*.schema"]), AppDir)
-                  end, Apps) ++ filelib:wildcard(filename:join(["{priv,schema,schemas}", "*.schema"]));
-schemas(Dir, _) ->
-    [filename:join([Dir, Schema]) || Schema <- filelib:wildcard("*.schema", Dir)].
+schemas({vm_args, OutputFile}, _Apps) ->
+    #{schemas => [filename:join([code:priv_dir(rebar3_scuttler), ?ERLANG_VM_ARGS_SCHEMA])],
+      release_schema_dir => "releases/{{release_version}}",
+      output_file => OutputFile};
+schemas({auto_discover, ReleaseSchemaDir, OutputFile} , Apps) ->
+    Schemas = lists:flatmap(fun(App) ->
+                              AppDir = rebar_app_info:dir(App),
+                              filelib:wildcard(filename:join(["{priv,schema,schemas}", "*.schema"]), AppDir) ++
+                              filelib:wildcard(filename:join(["priv", "{schema,schemas}", "*.schema"]), AppDir)
+                            end,
+                            Apps) ++
+              filelib:wildcard(filename:join(["{priv,schema,schemas}", "*.schema"])),
+    #{schemas => Schemas,
+      release_schema_dir => ReleaseSchemaDir,
+      output_file => OutputFile};
+schemas({Dir, ReleaseSchemaDir, OutputFile}, _) when is_list(Dir) ->
+    #{schemas => [filename:join([Dir, Schema]) || Schema <- filelib:wildcard("*.schema", Dir)],
+      release_schema_dir => ReleaseSchemaDir,
+      output_file => OutputFile}.
 
-overlays(_Name, CuttlefishBin, Schemas) ->
+apply_bin_overlay(_Name, CuttlefishBin, Overlays0) ->
+    [{copy, CuttlefishBin, "bin/cuttlefish"}] ++ Overlays0.
+
+apply_schema_overlays(Schemas, SchemasDir, Overlays0) ->
     SchemaOverlays = [begin
-                            {template, Schema, filename:join(["share", "schema", filename:basename(Schema)])}
+                            {template, Schema, filename:join([SchemasDir, filename:basename(Schema)])}
                       end || Schema <- Schemas],
-    [{copy, CuttlefishBin, "bin/cuttlefish"},
-     {mkdir, "share"},
-     {mkdir, "share/schema"} | SchemaOverlays].
+    apply_mkdir_overlay(SchemasDir, SchemaOverlays ++ Overlays0).
+
+apply_mkdir_overlay(undefined, Overlays0) ->
+    Overlays0;
+apply_mkdir_overlay(Dir, Overlays0) ->
+    [{mkdir, Dir} | Overlays0].
 
 %% Determine if --output-dir or -o has been passed, and if so, use
 %% that path for the release directory. Otherwise, default to the
@@ -215,14 +253,20 @@ rebar_release_dir(State) ->
             OutputDir
     end.
 
-template(Source, Target, Context) ->
+template(Source, Context) ->
     {ok, Template} = file:read_file(Source),
     case catch bbmustache:render(Template, Context) of
         Bin when is_binary(Bin) ->
-            file:write_file(Target, Bin);
+            Bin;
         Error ->
-            rebar_api:abort("failed generating ~p due to ~p",
-                            [Target, Error]),
+            rebar_api:abort("failed generating due to ~p",
+                            [Error]),
             {error, Error}
     end.
+
+-spec rebar_version() -> verl:version_t().
+rebar_version() ->
+    {ok, Vsn0} = application:get_key(rebar, vsn),
+    {ok, Vsn} = verl:parse(list_to_binary(Vsn0)),
+    Vsn.
 

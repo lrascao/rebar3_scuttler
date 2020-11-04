@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "generating .config files from schema dir"
+echo "generating files from schema"
 echo "schema dir: {{schema_dir}}"
 echo "output dir: {{output_dir}}"
 echo "output filename: {{output_filename}}"
