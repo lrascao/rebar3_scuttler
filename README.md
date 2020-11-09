@@ -42,7 +42,7 @@ Add the plugin to your project's rebar.config:
 % to inject the cuttlefish invocation to the pre-start release hook
 {project_plugins, [
     {rebar3_scuttler,
-        {git, "",
+        {git, "https://github.com/lrascao/rebar3_scuttler",
             {branch, "master"}}}
 ]}.
 ```
@@ -66,20 +66,7 @@ Files containing cuttlefish schemas should have the `.schema` extension, you sho
 
 ### Configuring the plugin
 
-`rebar3_scuttler` has the following options:
-
-* `schema_dir`, can either be the atom `auto_discover` or a string containing a dir
-   where the plugin will recursively look for `.schema` files.
-   Use `auto_discover` when your dependencies also offer cuttlefish schemas
-   that you want to make use of.
-* `pre_start_hook`, this is the name of file that will contain this plugin's pre start hook to be invoked just
-  prior to starting a release.
-  This script will take care of processing `.schema` and `.conf` files in order to output
-  `.config` files that you will be able to include from your own.
-* `output_file`, the `.config` file that gets generated as the final result
-* `conf_file`, the human non-Erlanger `.conf` that your application users will be able to tweak.
-
-The following entries should go in `rebar.config`.
+`rebar3_scuttler` has the following `rebar.config` options:
 
 ```
 % scuttler plugin opts
@@ -146,6 +133,9 @@ The following entries should go in `rebar.config`.
     % the pre start hook to. This is intended to be then added
     % to the extended_start_script_hooks/pre_start relx entry list
     % for it to be invoked prior to the release start
+    % This script will take care of processing `.schema` and `.conf`
+    % files in order to output `.config` files that you will be able
+    % to include from your own.
     {pre_start_hook, "bin/hooks/pre_start_cuttlefish"}
 ]}.
 ```
@@ -186,7 +176,7 @@ Finally, in your `sys.config` file you can include the generated `.config` file 
  ].
 ```
 
-The same can be appied to your `vm.args` file, that is being templated in `relx`'s `overlay` section:
+The same can be applied to your `vm.args` file, that is being templated in `relx`'s `overlay` section:
 
 ```
     {overlay, [
@@ -195,6 +185,9 @@ The same can be appied to your `vm.args` file, that is being templated in `relx`
         ...
     ]}
 ```
+
+Your developer maintained `vm.args` can now include the runtime generated args file
+by using `args_file`.
 
 ```
 -name nodename
