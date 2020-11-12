@@ -1,4 +1,4 @@
-rebar3 scuttlefish plugin
+rebar3 cuttlefish plugin
 =====
 
 ![Build Status](https://github.com/lrascao/rebar3_scuttler/workflows/CI/badge.svg)
@@ -42,7 +42,7 @@ Add the plugin to your project's rebar.config:
 % to inject the cuttlefish invocation to the pre-start release hook
 {project_plugins, [
     {rebar3_scuttler,
-        {git, "",
+        {git, "https://github.com/lrascao/rebar3_scuttler",
             {branch, "master"}}}
 ]}.
 ```
@@ -66,62 +66,77 @@ Files containing cuttlefish schemas should have the `.schema` extension, you sho
 
 ### Configuring the plugin
 
-`rebar3_scuttler` has the following options:
-
-* `schema_dir`, can either be the atom `auto_discover` or a string containing a dir
-   where the plugin will recursively look for `.schema` files.
-   Use `auto_discover` when your dependencies also offer cuttlefish schemas
-   that you want to make use of.
-* `pre_start_hook`, this is the name of file that will contain this plugin's pre start hook to be invoked just
-  prior to starting a release.
-  This script will take care of processing `.schema` and `.conf` files in order to output
-  `.config` files that you will be able to include from your own.
-* `output_file`, the `.config` file that gets generated as the final result
-* `conf_file`, the human non-Erlanger `.conf` that your application users will be able to tweak.
-
-The following entries should go in `rebar.config`.
+`rebar3_scuttler` has the following `rebar.config` options:
 
 ```
 % scuttler plugin opts
 {scuttler, [
-    % find cuttlefish schemas in your project and it's
-    % dependencies:
-    %   * auto_discover, finds *.schema files in:
-    %                    priv/*.schema
-    %                    priv/schema/*.schema
-    %                    priv/schemas/*.schema
-    %                    schema/*.schema
-    %                    schemas/*.schema
-    %   * "<dir>", find all *.schema in dir
-    %
-    % all of the discovered schemas will end up in the release under
-    % `share/schema`
-    {schema_dir, "priv/schemas"},
-
-    % Specifies where you'd like rebar3_scuttler to generate
-    % the pre start hook to. This is intended to be then added
-    % to the extended_start_script_hooks/pre_start relx entry list
-    % for it to be invoked prior to the release start
-    {pre_start_hook, "bin/hooks/pre_start_cuttlefish"},
-
-    % Specifies the .config filename that cuttlefish generates
-    % out of each schema. This filename is then intended to be
-    % included in your sys.config file.
-    % eg. sys.config
-    % [
-    %     {myapp, [
-    %           {my_conf1, value}
-    %     ]},
-    %
-    %     "releases/{{release_version}}/config/generated/user_defined.config"
-    % ].
-    {output_file, "releases/{{release_version}}/config/generated/user_defined.config"},
-
     % this is the human readable .conf file that the users of your application
     % will understand and edit in order to change configuration parameters,
     % it's location is relative to the root dir of the release
     % (ie. alongside bin, releases, etc)
-    {conf_file, "etc/simple_web_server.conf"}
+    {conf_file, "etc/simple_web_server.conf"},
+    % a list of cuttlefish schemas to find in your project and it's
+    % dependencies and the corresponding output file, this is a list of tuples
+    % that can the following forms:
+    %
+    %   `{vm_args, OutputFile}`
+    %       A heavily annotated .schema file maintained by the plugin with up to date
+    %       Erlang VM parameters. This vm.args schema is copied to the release directory
+    %       to the `releases/{{release_version}}/erlang.vm.args.schema`
+    %
+    %       Generated vm.args files can be included from the main vm.args file
+    %       using the `-args_file` parameter
+    %       eg. vm.args
+    %           -cookie somecookie
+    %           -name nodename
+    %           -args_file vm.generated.args
+    %
+    %   `{Discovery :: auto_discover | string(),
+    %     ReleaseSchemaDir :: string(),
+    %     OutputFile :: string()}`
+    %   
+    %       Schema ::
+    %           auto_discover: finds *.schema files in:
+    %                           priv/*.schema
+    %                           priv/schema/*.schema
+    %                           priv/schemas/*.schema
+    %                           schema/*.schema
+    %                           schemas/*.schema
+    %           "<dir>": find all *.schema in dir
+    %
+    %       ReleaseSchemaDir::
+    %           Specifies the location relative to the release dir where the referred schemas will be
+    %           copied to. 
+    %
+    %       OutputFile:
+    %           Specifies the .config or vm.args filename that cuttlefish generates
+    %           out of each schema.
+    %
+    %           Config files are then intended to be
+    %           included in your sys.config file.
+    %           eg. sys.config
+    %           [
+    %               {myapp, [
+    %                   {my_conf1, value}
+    %               ]},
+    %
+    %               "releases/{{release_version}}/config/generated/user_defined.config"
+    %           ].
+    %
+    {schemas, [
+           {vm_args, "releases/{{release_version}}/vm.generated.args"},
+           {"priv/schemas", "releases/{{release_version}}/schema",
+            "releases/{{release_version}}/config/generated/user_defined.config"}
+    ]},
+    % Specifies where you'd like rebar3_scuttler to generate
+    % the pre start hook to. This is intended to be then added
+    % to the extended_start_script_hooks/pre_start relx entry list
+    % for it to be invoked prior to the release start
+    % This script will take care of processing `.schema` and `.conf`
+    % files in order to output `.config` files that you will be able
+    % to include from your own.
+    {pre_start_hook, "bin/hooks/pre_start_cuttlefish"}
 ]}.
 ```
 
@@ -137,7 +152,7 @@ using it's just a matter of adding another `custom` entry to `pre_start`.
           % besides our own pre start script, we're here adding
           % the one that was generated out of rebar3_scuttler,
           % this script will pick up any .schema file in share/schema
-          % and generate a same name .config file in `output_dir`
+          % and generate a same named .config file in `output_dir`
           %
           % notice that the name here matches the one we defined above in
           % scuttler.pre_start_hook, it's just missing the `bin` prefix because
@@ -159,6 +174,27 @@ Finally, in your `sys.config` file you can include the generated `.config` file 
 
      "releases/{{release_version}}/config/generated/user_defined.config"
  ].
+```
+
+The same can be applied to your `vm.args` file, that is being templated in `relx`'s `overlay` section:
+
+```
+    {overlay, [
+        ...
+        {template, "config/vm.args", "releases/{{release_version}}/vm.args"}
+        ...
+    ]}
+```
+
+Your developer maintained `vm.args` can now include the runtime generated args file
+by using `args_file`.
+
+```
+-name nodename
+
+-setcookie cookie
+
+-args_file releases/{{release_version}}/vm.generated.args
 ```
 
 Copyright and License
