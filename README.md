@@ -1,4 +1,4 @@
-rebar3 scuttlefish plugin
+rebar3 cuttlefish plugin
 =====
 
 ![Build Status](https://github.com/lrascao/rebar3_scuttler/workflows/CI/badge.svg)
