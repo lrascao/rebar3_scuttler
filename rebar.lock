@@ -1,9 +1,6 @@
 {"1.1.0",
 [{<<"bbmustache">>,{pkg,<<"bbmustache">>,<<"1.5.0">>},0},
- {<<"cuttlefish">>,
-  {git,"https://github.com/Kyorai/cuttlefish.git",
-       {ref,"9ac2f9d7ce66e7493e6862e1b54d97fb57de0896"}},
-  0},
+ {<<"cuttlefish">>,{pkg,<<"cuttlefish">>,<<"2.5.0">>},0},
  {<<"getopt">>,{pkg,<<"getopt">>,<<"1.0.2">>},1},
  {<<"goldrush">>,{pkg,<<"goldrush">>,<<"0.1.9">>},2},
  {<<"lager">>,{pkg,<<"lager">>,<<"3.8.1">>},1},
@@ -11,6 +8,7 @@
 [
 {pkg_hash,[
  {<<"bbmustache">>, <<"8CFDE0602E90A4057E161BF5288ADE854B4E511E2E8924966A8438730E958381">>},
+ {<<"cuttlefish">>, <<"B0F4D4AA1E13DD3C40069FACC94FEDF967F3E1CFD1AC9FEB8DDF9DE21D9F4ABF">>},
  {<<"getopt">>, <<"33D9B44289FE7AD08627DDFE1D798E30B2DA0033B51DA1B3A2D64E72CD581D02">>},
  {<<"goldrush">>, <<"F06E5D5F1277DA5C413E84D5A2924174182FB108DABB39D5EC548B27424CD106">>},
  {<<"lager">>, <<"652EDFFBBEFFDE78F12220E1C64F6F6BFB173A8738CE73AF6ED3B1723A71C5BD">>},
