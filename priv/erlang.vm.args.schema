@@ -24,7 +24,13 @@
 %% Note: This flag can be removed or changed at any time without prior notice.
 {mapping, "erlang.sbwt", "vm_args.+sbwt", [
   {datatype, {enum, [none, very_short, short, medium, long, very_long]}},
-  {commented, "medium"}
+  {commented, "short"}
+]}.
+
+%% @doc As +sbwt but affects dirty CPU schedulers. Defaults to short.
+{mapping, "erlang.sbwtdcpu", "vm_args.+sbwtdcpu", [
+  {datatype, {enum, [none, very_short, short, medium, long, very_long]}},
+  {commented, "short"}
 ]}.
 
 %% @doc Sets the number of scheduler threads to create and scheduler threads to set online.

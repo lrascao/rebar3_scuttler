@@ -2,7 +2,7 @@ rebar3 cuttlefish plugin
 =====
 
 ![Build Status](https://github.com/lrascao/rebar3_scuttler/workflows/CI/badge.svg)
-[![hex.pm version]()](https://hex.pm/packages/rebar3_appup_plugin)
+[![Hex version](https://img.shields.io/hexpm/v/rebar3_scuttler.svg "Hex version")](https://hex.pm/packages/rebar3_scuttler)
 
 A rebar3 plugin for [cuttlefish](https://github.com/Kyorai/cuttlefish) schema handling with a slightly different approach than [rebar3_cuttlefish](https://github.com/vernemq/rebar3_cuttlefish).
 It departs from the assumption that your Erlang release is already making use of `sys.config` and other `.config` files and you simply want to expose a few specific parameters
