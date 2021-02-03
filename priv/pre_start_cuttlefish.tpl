@@ -1,11 +1,13 @@
 #!/bin/bash
 
-echo "generating files from schema"
-echo "schema dir: {{schema_dir}}"
-echo "output dir: {{output_dir}}"
-echo "output filename: {{output_filename}}"
+# echo "generating files from schema"
+# echo "schema dir: {{schema_dir}}"
+# echo "output dir: {{output_dir}}"
+# echo "output filename: {{output_filename}}"
 
-./bin/cuttlefish --log_level debug \
+# we want relx to start our script for us, he's the one who
+# knows where escript is located
+relx_escript ./bin/cuttlefish \
                  --etc_dir etc \
                  --dest_dir {{output_dir}} \
                  --dest_file {{output_filename}} \
