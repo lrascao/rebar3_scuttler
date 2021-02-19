@@ -24,13 +24,15 @@
 %% Note: This flag can be removed or changed at any time without prior notice.
 {mapping, "erlang.sbwt", "vm_args.+sbwt", [
   {datatype, {enum, [none, very_short, short, medium, long, very_long]}},
-  {commented, "short"}
+  {commented, "short"},
+  hidden
 ]}.
 
 %% @doc As +sbwt but affects dirty CPU schedulers. Defaults to short.
 {mapping, "erlang.sbwtdcpu", "vm_args.+sbwtdcpu", [
   {datatype, {enum, [none, very_short, short, medium, long, very_long]}},
-  {commented, "short"}
+  {commented, "short"},
+  hidden
 ]}.
 
 %% @doc Sets the number of scheduler threads to create and scheduler threads to set online.
@@ -52,14 +54,16 @@
 {mapping, "erlang.schedulers.total", "vm_args.+S", [
   {datatype, integer},
   {commented, 0},
-  {validators, ["=<1024"]}
+  {validators, ["=<1024"]},
+  hidden
 ]}.
 
 %% @see erlang.schedulers.total
 {mapping, "erlang.schedulers.online", "vm_args.+S", [
   {datatype, integer},
   {commented, 0},
-  {validators, ["=<1024"]}
+  {validators, ["=<1024"]},
+  hidden
 ]}.
 
 {translation, "vm_args.+S",
@@ -103,7 +107,8 @@
 {mapping, "erlang.async_threads", "vm_args.+A", [
   {datatype, integer},
   {commented, 1},
-  {validators, ["range:0-1024"]}
+  {validators, ["range:0-1024"]},
+  hidden
 ]}.
 
 %% @doc Suggested stack size, in kilowords, for threads in the async thread pool.
@@ -142,7 +147,8 @@
 {mapping, "erlang.max_ports", "vm_args.+Q", [
   {datatype, integer},
   {commented, 65536},
-  {validators, ["range4ports"]}
+  {validators, ["range4ports"]},
+  hidden
 ]}.
 
 %% @doc A non-negative integer which indicates how many times
@@ -156,8 +162,8 @@
 {mapping, "erlang.fullsweep_after", "vm_args.-env ERL_FULLSWEEP_AFTER", [
   {datatype, integer},
   {commented, undefined},
-  hidden,
-  {validators, ["positive_integer"]}
+  {validators, ["positive_integer"]},
+  hidden
 ]}.
 
 %% @doc Set the location of crash dumps
@@ -199,8 +205,8 @@
 {mapping, "erlang.distribution_buffer_size", "vm_args.+zdbbl", [
   {datatype, bytesize},
   {commented, "32MB"},
-  hidden,
-  {validators, ["zdbbl_range"]}
+  {validators, ["zdbbl_range"]},
+  hidden
 ]}.
 
 {translation, "vm_args.+zdbbl",
@@ -226,7 +232,8 @@
 %% More information: http://www.erlang.org/doc/man/erl.html#+sfwi
 {mapping, "erlang.schedulers.force_wakeup_interval", "vm_args.+sfwi", [
   {commented, 500},
-  {datatype, integer}
+  {datatype, integer},
+  hidden
 ]}.
 
 %% @doc Enable or disable scheduler compaction of load. By default
@@ -242,7 +249,8 @@
 %% More information: http://www.erlang.org/doc/man/erl.html#+scl
 {mapping, "erlang.schedulers.compaction_of_load", "vm_args.+scl", [
   {commented, "false"},
-  {datatype, {enum, [true, false]}}
+  {datatype, {enum, [true, false]}},
+  hidden
 ]}.
 
 %% @doc Enable or disable scheduler utilization balancing of load. By
@@ -257,7 +265,8 @@
 %% More information: http://www.erlang.org/doc/man/erl.html#+sub
 {mapping, "erlang.schedulers.utilization_balancing", "vm_args.+sub", [
   {commented, "true"},
-  {datatype, {enum, [true, false]}}
+  {datatype, {enum, [true, false]}},
+  hidden
 ]}.
 
 %% @doc For ease of firewall configuration, the Erlang distribution
