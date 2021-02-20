@@ -318,6 +318,24 @@
   {datatype, integer},
   hidden
 ]}.
+=
+
+%% @doc Enable or disable time correction. Defaults to on.
+%% More information: http://erlang.org/doc/man/erl.html#emulator-flags
+{mapping, "erlang.time_correction", "vm_args.+c", [
+  {default, on},
+  {datatype, flag},
+  hidden
+]}.
+
+%% @doc Sets the Erlang Time Warp Mode. Defaults to no_time_warp.
+%% More information: http://erlang.org/doc/man/erl.html#emulator-flags
+{mapping, "erlang.time_correction.warp_mode", "vm_args.+C", [
+  {default, no_time_warp},
+  {datatype, {enum, [no_time_warp, single_time_warp, multi_time_warp]}},
+  hidden
+]}.
+
 
 % ----------- Validators ----------------------
 {validator, "=<1024", "has a maximum value of 1024",
