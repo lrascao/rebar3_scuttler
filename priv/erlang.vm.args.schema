@@ -318,7 +318,6 @@
   {datatype, integer},
   hidden
 ]}.
-=
 
 %% @doc Enable or disable time correction. Defaults to on.
 %% More information: http://erlang.org/doc/man/erl.html#emulator-flags
