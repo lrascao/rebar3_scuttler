@@ -94,7 +94,7 @@ do(State0) ->
         lists:foldl(fun(SchemaDef, {SchemasAcc0, OverlaysAcc0, PreStartHookBinAcc0}) ->
                         #{schemas := Schemas,
                           release_schema_dir := ReleaseSchemaDir,
-                          output_file := OutputFile} = schemas(SchemaDef, Deps++Apps),
+                          output_file := OutputFile} = schemas(SchemaDef, Deps++Apps, State0),
 
                         % add template overlay entries that will copy all the cuttlefish schemas
                         % to the release
@@ -108,7 +108,7 @@ do(State0) ->
                         % .config files of each schema
                         % before that we need to replace all mustache variables in the
                         % pre start script template
-                        PreStartHookBin = template(PreStartHookTemplate, 
+                        PreStartHookBin = template({file, PreStartHookTemplate}, 
                                                    [{"schema_dir", ReleaseSchemaDir},
                                                     {"output_dir", OutputDir},
                                                     {"output_filename", OutputFilename},
@@ -224,11 +224,11 @@ make_default_file(File, TargetDir, Mappings) ->
     cuttlefish_conf:generate_file(Mappings, Filename),
     Filename.
 
-schemas({vm_args, OutputFile}, _Apps) ->
+schemas({vm_args, OutputFile}, _Apps, _State) ->
     #{schemas => [filename:join([code:priv_dir(rebar3_scuttler), ?ERLANG_VM_ARGS_SCHEMA])],
       release_schema_dir => "releases/{{release_version}}",
       output_file => OutputFile};
-schemas({auto_discover, ReleaseSchemaDir, OutputFile} , Apps) ->
+schemas({auto_discover, ReleaseSchemaDir, OutputFile}, Apps, _State) ->
     Schemas = lists:flatmap(fun(App) ->
                               AppDir = rebar_app_info:dir(App),
                               filelib:wildcard(filename:join(["{priv,schema,schemas}", "*.schema"]), AppDir) ++
@@ -239,7 +239,11 @@ schemas({auto_discover, ReleaseSchemaDir, OutputFile} , Apps) ->
     #{schemas => Schemas,
       release_schema_dir => ReleaseSchemaDir,
       output_file => OutputFile};
-schemas({Dir, ReleaseSchemaDir, OutputFile}, _) when is_list(Dir) ->
+schemas({Dir0, ReleaseSchemaDir, OutputFile}, _, State) when is_list(Dir0) ->
+    Dir = template(Dir0, 
+                   [{"deps_dir", rebar_dir:deps_dir(State)}]),
+    rebar_api:debug("looking for *.schemas in ~p",
+                    [Dir]),
     #{schemas => [filename:join([Dir, Schema]) || Schema <- filelib:wildcard("*.schema", Dir)],
       release_schema_dir => ReleaseSchemaDir,
       output_file => OutputFile}.
@@ -271,7 +275,7 @@ rebar_release_dir(State) ->
             OutputDir
     end.
 
-template(Source, Context) ->
+template({file, Source}, Context) ->
     {ok, Template} = file:read_file(Source),
     case catch bbmustache:render(Template, Context) of
         Bin when is_binary(Bin) ->
@@ -280,5 +284,9 @@ template(Source, Context) ->
             rebar_api:abort("failed generating due to ~p",
                             [Error]),
             {error, Error}
-    end.
+    end;
+template(Template, Context) when is_list(Template) ->
+    binary_to_list(template(list_to_binary(Template), Context));
+template(Template, Context) when is_binary(Template) ->
+    bbmustache:render(Template, Context).
 
