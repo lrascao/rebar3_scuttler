@@ -96,14 +96,16 @@ Files containing cuttlefish schemas should have the `.schema` extension, you sho
     %     ReleaseSchemaDir :: string(),
     %     OutputFile :: string()}`
     %   
-    %       Schema ::
+    %       Discovery ::
     %           auto_discover: finds *.schema files in:
     %                           priv/*.schema
     %                           priv/schema/*.schema
     %                           priv/schemas/*.schema
     %                           schema/*.schema
     %                           schemas/*.schema
-    %           "<dir>": find all *.schema in dir
+    %           "<dir>": find all *.schema in dir, this can take the form of a 
+    %                    mustache template with the following vars:
+    %                       deps_dir: rebar3 dependencies dir
     %
     %       ReleaseSchemaDir::
     %           Specifies the location relative to the release dir where the referred schemas will be
@@ -121,13 +123,16 @@ Files containing cuttlefish schemas should have the `.schema` extension, you sho
     %                   {my_conf1, value}
     %               ]},
     %
-    %               "releases/{{release_version}}/config/generated/user_defined.config"
+    %               "releases/{{release_version}}/config/generated/user_defined.config",
+    %               "releases/{{release_version}}/config/generated/riak_core.config"
     %           ].
     %
     {schemas, [
            {vm_args, "releases/{{release_version}}/vm.generated.args"},
            {"priv/schemas", "releases/{{release_version}}/schema",
-            "releases/{{release_version}}/config/generated/user_defined.config"}
+            "releases/{{release_version}}/config/generated/user_defined.config"},
+           {"{{deps_dir}}/riak_core/priv", "releases/{{release_version}}/schema/riak_core",
+                "releases/{{release_version}}/config/generated/riak_core.config"}
     ]},
     % Specifies where you'd like rebar3_scuttler to generate
     % the pre start hook to. This is intended to be then added
