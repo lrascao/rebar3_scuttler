@@ -11,6 +11,7 @@
 -define(DEPS, [{?NAMESPACE, compile}]).
 
 -define(PRE_START_HOOK_TEMPLATE, "pre_start_cuttlefish.tpl").
+-define(DEFAULT_PRE_START_CUTTLEFISH_HOOK_SCRIPT, "bin/hooks/pre_start_cuttlefish").
 -define(ERLANG_VM_ARGS_SCHEMA, "erlang.vm.args.schema").
 
 %% ===================================================================
@@ -82,7 +83,7 @@ do(State0) ->
     SchemaDefs = proplists:get_value(schemas, ScuttlerConf, []),
     % get the name of the to be generated pre start hook
     ReleasePreStartHook = proplists:get_value(pre_start_hook, ScuttlerConf, 
-                                             "bin/hooks/pre_start_cuttlefish"),
+                                              ?DEFAULT_PRE_START_CUTTLEFISH_HOOK_SCRIPT),
 
     % get the projects overlays and apply the overlay that will copy over the cuttlefish bin
     % and create the share/schema directory inside the release
@@ -118,6 +119,8 @@ do(State0) ->
                     end,
                     {[], Overlays0, <<"">>},
                     SchemaDefs),
+    rebar_api:debug("overlays: ~p",
+                     [Overlays1]),
 
     % write the templated result file to the plugin's output dir
     PreStartHookFile = filename:join([PluginEbinDir, ?PRE_START_HOOK_TEMPLATE]),
@@ -133,9 +136,20 @@ do(State0) ->
                              lists:keydelete(overlay, 1, Relx) ++
                                              [{overlay, Overlays}]),
 
+    % override the `extended_start_script_hooks` relx section, this allows us
+    % to add the release pre start hook to the list of hooks
+    StartScriptHooks0 = proplists:get_value(extended_start_script_hooks, Relx, []),
+    PreStartHooks = [{custom, ReleasePreStartHook} |
+                        proplists:get_value(pre_start, StartScriptHooks0, [])],
+    StartScriptHooks =
+        lists:keydelete(pre_start, 1, StartScriptHooks0) ++ [{pre_start, PreStartHooks}],
+    State2 = rebar_state:set(State1, relx,
+                             lists:keydelete(extended_start_script_hooks, 1, Relx) ++
+                                             [{extended_start_script_hooks, StartScriptHooks}]),
+
     % generate the release, this will cause all schema files to be templated and copied
     % over to the release dir
-    State2 = do_release(State1),
+    State3 = do_release(State2),
 
     rebar_api:debug("all schemas: ~p", [AllSchemas]),
     % % now that the schema files have been templated, we look them up
@@ -161,7 +175,7 @@ do(State0) ->
                     % based on these schema files, now we need to sneak a copy overlay of this generated
                     % conf file into relx's state in order for it to end up in a tarball thats a result of
                     % `rebar3 tar`.
-                    {ok, rebar_state:set(State2, relx,
+                    {ok, rebar_state:set(State3, relx,
                                          lists:keydelete(overlay, 1, Relx) ++
                                                          [{overlay, [
                                                             {copy, ConfFile, ConfFile} | Overlays]}])}
@@ -169,7 +183,7 @@ do(State0) ->
         true ->
             rebar_api:debug("no need to generate a default .conf file, one already exists at ~p",
                             [filename:join([TargetDir, ConfFile])]),
-            {ok, rebar_state:set(State2, relx,
+            {ok, rebar_state:set(State3, relx,
                                  lists:keydelete(overlay, 1, Relx) ++
                                                  [{overlay, [
                                                     {copy, ConfFile, ConfFile} | Overlays]}])}
